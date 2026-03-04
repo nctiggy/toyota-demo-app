@@ -19,3 +19,10 @@
 - v2 mode adds Migration Complete card and Migration Stats
 - Created .dockerignore
 - Validated: all 4 endpoints return correct data, 10 vehicles, Toyota styling confirmed
+
+## US-003: Dockerfile ✓
+- Created multi-stage Dockerfile with node:20-alpine
+- Image size: ~49MB (under 100MB requirement)
+- Local build: docker build -t toyota-demo-app:test . succeeds
+- Container run: docker run -e DB_HOST=10.30.0.27 -p 3000:3000 toyota-demo-app:test serves app
+- Verified: /healthz OK, /api/status connected=true, /api/vehicles returns 10 vehicles
