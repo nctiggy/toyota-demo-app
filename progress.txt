@@ -42,3 +42,12 @@
 - Service: NodePort on 30080
 - helm lint passes for default, v1, and v2 value files
 - helm template renders correct v1 config (direct IP) and v2 config (K8s service DNS)
+
+## US-006: Tag v2 ✓
+- Tagged v2.0.0 and pushed to GitHub
+- GitHub Actions completed successfully in 54s
+- Docker Hub has nctiggy/toyota-demo-app:2.0.0 with both amd64 and arm64 platforms
+- Both 1.0.0 and 2.0.0 tags confirmed on Docker Hub
+
+## ALL STORIES COMPLETE ✓
+All 6 user stories (US-001 through US-006) have been completed successfully.
