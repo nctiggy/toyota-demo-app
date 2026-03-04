@@ -165,7 +165,7 @@ const TOYOTA_MODELS = [
 
 app.get('/', (_req, res) => {
   const isOverlay = CONNECTION_METHOD === 'overlay';
-  const versionLabel = isOverlay ? 'v2.0.0' : 'v1.0.0';
+  const versionLabel = 'v' + APP_VERSION;
   const subtitle = isOverlay
     ? 'Post-Migration \u2014 Database on VMO'
     : 'Pre-Migration \u2014 Database on VMware';
