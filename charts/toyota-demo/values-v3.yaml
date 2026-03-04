@@ -1,0 +1,6 @@
+image:
+  tag: "3.0.0"
+
+app:
+  version: "3.0.0"
+  connectionMethod: "direct"
