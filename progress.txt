@@ -1,1 +1,10 @@
 # Toyota Demo App — Progress Log
+
+## US-001: PostgreSQL Database Setup ✓
+- Configured listen_addresses='*' in postgresql.conf
+- Added remote access rule (host all all 0.0.0.0/0 md5) to pg_hba.conf
+- Set postgres password to 'postgres'
+- Created toyota database
+- Created vehicles table and seeded 10 Toyota vehicles
+- Restarted PostgreSQL
+- Verified: remote TCP connectivity works, SELECT count(*) FROM vehicles returns 10
