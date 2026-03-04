@@ -2,6 +2,8 @@ const express = require('express');
 const { Pool } = require('pg');
 
 const app = express();
+app.use(express.json());
+
 const PORT = process.env.PORT || 3000;
 const DB_HOST = process.env.DB_HOST || '10.30.0.27';
 const DB_PORT = process.env.DB_PORT || 5432;
@@ -22,6 +24,67 @@ const pool = new Pool({
   connectionTimeoutMillis: 5000,
 });
 
+pool.on('error', (err) => {
+  console.error('Pool idle client error:', err.message);
+});
+
+// --- Car silhouette SVGs by vehicle type ---
+const CAR_SVGS = {
+  sedan: '<svg viewBox="0 0 80 32" width="56" height="22"><path d="M8 24h4a4 4 0 0 0 8 0h24a4 4 0 0 0 8 0h12c2 0 4-1.5 4-3v-5c0-1-0.5-2-1.5-2.5L60 10l-8-6c-1-.8-2.5-1.2-4-1.2H30c-2 0-4 .8-5.5 2L16 12l-12 3c-2 .5-3 2-3 4v2c0 1.7 1.3 3 3 3h4z" fill="#58595B"/><circle cx="16" cy="24" r="3.5" fill="#333"/><circle cx="16" cy="24" r="1.5" fill="#777"/><circle cx="52" cy="24" r="3.5" fill="#333"/><circle cx="52" cy="24" r="1.5" fill="#777"/><path d="M26 6h16l6 5H22z" fill="#a8d8ea" opacity="0.6"/></svg>',
+  suv: '<svg viewBox="0 0 80 36" width="56" height="25"><path d="M8 28h4a5 5 0 0 0 10 0h22a5 5 0 0 0 10 0h10c2 0 4-1.5 4-3.5v-8c0-1.5-.5-2.5-2-3.5L58 8l-6-5c-1.5-1.2-3-1.8-5-1.8H28c-2.5 0-4.5 1-6 2.5L14 12 4 15c-2.5.7-3.5 2.5-3.5 4.5v5c0 2 1.5 3.5 3.5 3.5h4z" fill="#58595B"/><circle cx="17" cy="28" r="4" fill="#333"/><circle cx="17" cy="28" r="1.8" fill="#777"/><circle cx="54" cy="28" r="4" fill="#333"/><circle cx="54" cy="28" r="1.8" fill="#777"/><path d="M24 4h20l5 6H20z" fill="#a8d8ea" opacity="0.6"/><path d="M46 4h6l8 6H51z" fill="#a8d8ea" opacity="0.5"/></svg>',
+  truck: '<svg viewBox="0 0 88 36" width="62" height="25"><path d="M8 28h4a5 5 0 0 0 10 0h30a5 5 0 0 0 10 0h10c2 0 4-1.5 4-3.5v-6H50V6c0-2-1.5-3.5-3.5-3.5H28c-2.5 0-4.5 1-6 2.5L14 12 4 15c-2.5.7-3.5 2.5-3.5 4.5v5c0 2 1.5 3.5 3.5 3.5h4z" fill="#58595B"/><rect x="50" y="10" width="26" height="8.5" rx="1" fill="#6b7280"/><circle cx="17" cy="28" r="4" fill="#333"/><circle cx="17" cy="28" r="1.8" fill="#777"/><circle cx="62" cy="28" r="4" fill="#333"/><circle cx="62" cy="28" r="1.8" fill="#777"/><path d="M24 4h18l4 6H20z" fill="#a8d8ea" opacity="0.6"/></svg>',
+  sports: '<svg viewBox="0 0 80 28" width="56" height="20"><path d="M10 22h4a3.5 3.5 0 0 0 7 0h26a3.5 3.5 0 0 0 7 0h12c2 0 3.5-1 3.5-2.5v-4c0-1.5-1-3-2.5-3.5L62 9l-10-5.5c-1.5-.9-3-1.3-5-1.3H32c-2.5 0-4 .6-5.5 1.8L18 10l-14 3c-2 .5-3 2-3 3.5v3c0 1.5 1 2.5 2.5 2.5H10z" fill="#EB0A1E"/><circle cx="17.5" cy="22" r="3" fill="#333"/><circle cx="17.5" cy="22" r="1.3" fill="#777"/><circle cx="54" cy="22" r="3" fill="#333"/><circle cx="54" cy="22" r="1.3" fill="#777"/><path d="M28 4h18l8 5H24z" fill="#a8d8ea" opacity="0.5"/></svg>',
+  hatchback: '<svg viewBox="0 0 76 32" width="54" height="22"><path d="M8 24h4a4 4 0 0 0 8 0h22a4 4 0 0 0 8 0h12c2 0 3.5-1.3 3.5-3v-5c0-1-.5-2-1.5-2.5L58 10l-6-5c-1.5-1-3-1.5-5-1.5H30c-2 0-3.5.7-5 2L17 12l-13 3c-2 .5-3 2-3 3.5v2.5c0 1.7 1.3 3 3 3h4z" fill="#16a34a"/><circle cx="16" cy="24" r="3.5" fill="#333"/><circle cx="16" cy="24" r="1.5" fill="#777"/><circle cx="50" cy="24" r="3.5" fill="#333"/><circle cx="50" cy="24" r="1.5" fill="#777"/><path d="M26 5h16l5 5H22z" fill="#a8d8ea" opacity="0.6"/><path d="M44 5h6l8 5H48z" fill="#a8d8ea" opacity="0.5"/></svg>',
+};
+
+// Map Toyota models to vehicle types
+const MODEL_TYPE_MAP = {
+  'Camry': 'sedan',
+  'Corolla': 'sedan',
+  'Crown': 'sedan',
+  'Avalon': 'sedan',
+  'RAV4': 'suv',
+  'Highlander': 'suv',
+  'Grand Highlander': 'suv',
+  '4Runner': 'suv',
+  'Sequoia': 'suv',
+  'Venza': 'suv',
+  'bZ4X': 'suv',
+  'Land Cruiser': 'suv',
+  'Tacoma': 'truck',
+  'Tundra': 'truck',
+  'Prius': 'hatchback',
+  'Corolla Cross': 'hatchback',
+  'GR Corolla': 'hatchback',
+  'Supra': 'sports',
+  'GR86': 'sports',
+  'GR Supra': 'sports',
+};
+
+function getCarSvg(model) {
+  const type = MODEL_TYPE_MAP[model] || 'sedan';
+  return CAR_SVGS[type] || CAR_SVGS.sedan;
+}
+
+// --- v2 fleet expansion: seed extra vehicles on startup ---
+async function seedV2Vehicles() {
+  if (CONNECTION_METHOD !== 'overlay') return;
+  try {
+    const check = await pool.query("SELECT count(*) FROM vehicles WHERE model = 'bZ4X'");
+    if (parseInt(check.rows[0].count) > 0) return; // already seeded
+    await pool.query(`
+      INSERT INTO vehicles (vin, model, year, status, mileage) VALUES
+        ('JTMAB3FV5PD100001', 'bZ4X', 2025, 'active', 1200),
+        ('JTHDP5BC3P5200002', 'Crown', 2025, 'active', 3400),
+        ('5TDGZRBH0PS300003', 'Grand Highlander', 2025, 'active', 5600),
+        ('3TMCZ5AN8PS400004', 'Tacoma', 2025, 'active', 2100)
+    `);
+    console.log('v2 fleet expansion: 4 new vehicles seeded');
+  } catch (err) {
+    console.log('v2 seed skipped:', err.message);
+  }
+}
+
 // --- API Endpoints ---
 
 app.get('/healthz', (_req, res) => {
@@ -32,6 +95,7 @@ app.get('/api/status', async (_req, res) => {
   const start = Date.now();
   try {
     const result = await pool.query('SELECT version()');
+    const countResult = await pool.query('SELECT count(*) FROM vehicles');
     const responseTimeMs = Date.now() - start;
     res.json({
       connected: true,
@@ -42,6 +106,7 @@ app.get('/api/status', async (_req, res) => {
         ? 'Kubernetes Service DNS (Overlay Network)'
         : 'Direct IP (VLAN 30)',
       appVersion: APP_VERSION,
+      vehicleCount: parseInt(countResult.rows[0].count),
     });
   } catch (err) {
     res.json({
@@ -66,6 +131,38 @@ app.get('/api/vehicles', async (_req, res) => {
   }
 });
 
+app.post('/api/vehicles', async (req, res) => {
+  const { vin, model, year, status, mileage } = req.body;
+  if (!vin || !model || !year) {
+    return res.status(400).json({ error: 'vin, model, and year are required' });
+  }
+  try {
+    const result = await pool.query(
+      'INSERT INTO vehicles (vin, model, year, status, mileage) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [vin, model, parseInt(year), status || 'active', parseInt(mileage) || 0]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/vehicles/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM vehicles WHERE id = $1', [req.params.id]);
+    res.json({ deleted: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Toyota models list for the add modal dropdown ---
+const TOYOTA_MODELS = [
+  'Camry', 'Corolla', 'Crown', 'RAV4', 'Highlander', 'Grand Highlander',
+  '4Runner', 'Tundra', 'Tacoma', 'Prius', 'Supra', 'GR86',
+  'bZ4X', 'Venza', 'Sequoia', 'Land Cruiser', 'Corolla Cross', 'GR Corolla'
+];
+
 app.get('/', (_req, res) => {
   const isOverlay = CONNECTION_METHOD === 'overlay';
   const versionLabel = isOverlay ? 'v2.0.0' : 'v1.0.0';
@@ -73,9 +170,6 @@ app.get('/', (_req, res) => {
     ? 'Post-Migration \u2014 Database on VMO'
     : 'Pre-Migration \u2014 Database on VMware';
   const bannerAccent = isOverlay ? '#EB0A1E' : '#58595B';
-  const connectionLabel = isOverlay
-    ? 'Kubernetes Service DNS \u2014 Overlay Network'
-    : 'Direct IP \u2014 VLAN 30';
   const connectionIcon = isOverlay
     ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>'
     : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><circle cx="7" cy="6" r="1" fill="currentColor"/><circle cx="7" cy="18" r="1" fill="currentColor"/></svg>';
@@ -87,7 +181,7 @@ app.get('/', (_req, res) => {
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
         <h3>Migration Complete</h3>
       </div>
-      <p>Database successfully migrated from VMware to VMO/KubeVirt</p>
+      <p>Database successfully migrated from VMware to VMO/KubeVirt. Fleet expanded with 4 new vehicles.</p>
     </div>
     <div class="card stats-card">
       <h3>Migration Stats</h3>
@@ -98,6 +192,13 @@ app.get('/', (_req, res) => {
         <div class="stat"><span class="stat-label">Destination</span><span class="stat-value">VMO / KubeVirt</span></div>
       </div>
     </div>` : '';
+
+  // Build model options for the dropdown
+  const modelOptions = TOYOTA_MODELS.map(m => `<option value="${m}">${m}</option>`).join('');
+
+  // Car SVGs as a JS object for client-side rendering
+  const carSvgsJson = JSON.stringify(CAR_SVGS);
+  const modelTypeMapJson = JSON.stringify(MODEL_TYPE_MAP);
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -169,6 +270,18 @@ app.get('/', (_req, res) => {
       margin-bottom: 16px;
       color: #000;
     }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .card-header h3 { margin-bottom: 0; }
+    .fleet-count {
+      font-size: 13px;
+      color: #58595B;
+      font-weight: 500;
+    }
 
     /* Connection Status */
     .connection-status {
@@ -216,10 +329,21 @@ app.get('/', (_req, res) => {
       border-bottom: 2px solid #E5E5E5;
     }
     td {
-      padding: 12px 16px;
+      padding: 10px 16px;
       border-bottom: 1px solid #F0F0F0;
+      vertical-align: middle;
     }
     tr:hover td { background: #FAFAFA; }
+    .model-cell {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .car-icon {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+    }
     .status-active {
       display: inline-block;
       background: #dcfce7;
@@ -229,6 +353,38 @@ app.get('/', (_req, res) => {
       font-size: 12px;
       font-weight: 500;
     }
+    .status-maintenance {
+      display: inline-block;
+      background: #fef3c7;
+      color: #92400e;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .new-badge {
+      display: inline-block;
+      background: #EB0A1E;
+      color: #FFF;
+      padding: 1px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 600;
+      margin-left: 8px;
+      letter-spacing: 0.5px;
+    }
+    .delete-btn {
+      background: none;
+      border: none;
+      color: #dc2626;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      opacity: 0.4;
+      transition: opacity 0.15s;
+    }
+    .delete-btn:hover { opacity: 1; }
 
     /* Flow Visualization */
     .flow {
@@ -261,9 +417,7 @@ app.get('/', (_req, res) => {
     }
 
     /* Migration Cards */
-    .migration-card {
-      border-left: 4px solid #16a34a;
-    }
+    .migration-card { border-left: 4px solid #16a34a; }
     .migration-header {
       display: flex;
       align-items: center;
@@ -277,13 +431,133 @@ app.get('/', (_req, res) => {
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       gap: 16px;
     }
-    .stat {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
+    .stat { display: flex; flex-direction: column; gap: 4px; }
     .stat-label { font-size: 12px; color: #58595B; text-transform: uppercase; letter-spacing: 0.5px; }
     .stat-value { font-size: 16px; font-weight: 600; }
+
+    /* Add Vehicle Button */
+    .btn-add {
+      background: ${bannerAccent};
+      color: #FFF;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 6px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: opacity 0.15s;
+    }
+    .btn-add:hover { opacity: 0.85; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: #FFF;
+      border-radius: 12px;
+      padding: 32px;
+      width: 480px;
+      max-width: 90vw;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal h2 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      color: #000;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #58595B;
+      margin-bottom: 6px;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #E5E5E5;
+      border-radius: 6px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 14px;
+      color: #000;
+      background: #FFF;
+      transition: border-color 0.15s;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: ${bannerAccent};
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 24px;
+    }
+    .btn-cancel {
+      background: #F7F7F7;
+      color: #58595B;
+      border: 1px solid #E5E5E5;
+      padding: 10px 24px;
+      border-radius: 6px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-submit {
+      background: ${bannerAccent};
+      color: #FFF;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 6px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn-submit:hover { opacity: 0.85; }
+    .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    .form-error {
+      color: #dc2626;
+      font-size: 13px;
+      margin-top: 8px;
+      display: none;
+    }
+    .car-preview {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: #F7F7F7;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      min-height: 60px;
+    }
 
     /* Error */
     .error-msg { color: #dc2626; font-size: 14px; margin-top: 8px; }
@@ -297,12 +571,32 @@ app.get('/', (_req, res) => {
       margin-top: 48px;
     }
 
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #16a34a;
+      color: #FFF;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 2000;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
     /* Responsive */
     @media (max-width: 768px) {
       .header { padding: 12px 20px; flex-wrap: wrap; }
       .hero { padding: 12px 20px; }
       .main { padding: 20px; }
       .connection-details { flex-direction: column; gap: 8px; }
+      .form-row { grid-template-columns: 1fr; }
+      .modal { padding: 24px; }
     }
   </style>
 </head>
@@ -347,21 +641,29 @@ app.get('/', (_req, res) => {
     </div>
 
     <div class="card">
-      <h3>Vehicle Fleet</h3>
+      <div class="card-header">
+        <h3>Vehicle Fleet <span class="fleet-count" id="fleet-count"></span></h3>
+        <button class="btn-add" onclick="openModal()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add to Fleet
+        </button>
+      </div>
       <div class="table-wrap">
         <table id="vehicles-table">
           <thead>
             <tr>
-              <th>VIN</th>
+              <th style="width:60px"></th>
               <th>Model</th>
+              <th>VIN</th>
               <th>Year</th>
               <th>Status</th>
               <th>Mileage</th>
               <th>Last Service</th>
+              <th style="width:40px"></th>
             </tr>
           </thead>
           <tbody id="vehicles-body">
-            <tr><td colspan="6" style="text-align:center;color:#58595B">Loading vehicles...</td></tr>
+            <tr><td colspan="8" style="text-align:center;color:#58595B">Loading vehicles...</td></tr>
           </tbody>
         </table>
       </div>
@@ -372,15 +674,158 @@ app.get('/', (_req, res) => {
     \u00a9 ${new Date().getFullYear()} Toyota Motor Corporation. Fleet Database Portal \u2014 VMO Demo.
   </div>
 
+  <!-- Add Vehicle Modal -->
+  <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <h2>Add Vehicle to Fleet</h2>
+      <div class="car-preview" id="car-preview"></div>
+      <form id="add-form" onsubmit="return submitVehicle(event)">
+        <div class="form-group">
+          <label>Model</label>
+          <select id="f-model" required onchange="updatePreview()">
+            <option value="">Select a model...</option>
+            ${modelOptions}
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Year</label>
+            <input type="number" id="f-year" value="2025" min="2020" max="2026" required>
+          </div>
+          <div class="form-group">
+            <label>Mileage</label>
+            <input type="number" id="f-mileage" value="0" min="0" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>VIN</label>
+          <input type="text" id="f-vin" maxlength="17" placeholder="Auto-generated if blank">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="f-status">
+            <option value="active">Active</option>
+            <option value="maintenance">Maintenance</option>
+          </select>
+        </div>
+        <div class="form-error" id="form-error"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn-submit" id="btn-submit">Add Vehicle</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
   <script>
+    var CAR_SVGS = ${carSvgsJson};
+    var MODEL_TYPE_MAP = ${modelTypeMapJson};
+    var originalCount = 0;
+
+    function getCarSvg(model, scale) {
+      var type = MODEL_TYPE_MAP[model] || 'sedan';
+      var svg = CAR_SVGS[type] || CAR_SVGS.sedan;
+      if (scale) {
+        svg = svg.replace(/width="\\d+"/, 'width="' + scale + '"').replace(/height="\\d+"/, 'height="' + Math.round(scale * 0.4) + '"');
+      }
+      return svg;
+    }
+
+    function showToast(msg) {
+      var t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast show';
+      setTimeout(function() { t.className = 'toast'; }, 3000);
+    }
+
+    function openModal() {
+      document.getElementById('modal-overlay').className = 'modal-overlay active';
+      document.getElementById('f-model').value = '';
+      document.getElementById('f-year').value = '2025';
+      document.getElementById('f-mileage').value = '0';
+      document.getElementById('f-vin').value = '';
+      document.getElementById('f-status').value = 'active';
+      document.getElementById('form-error').style.display = 'none';
+      updatePreview();
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').className = 'modal-overlay';
+    }
+
+    function updatePreview() {
+      var model = document.getElementById('f-model').value;
+      var preview = document.getElementById('car-preview');
+      if (model) {
+        preview.innerHTML = getCarSvg(model, 120) + '<span style="margin-left:16px;font-weight:600;font-size:16px">Toyota ' + model + '</span>';
+      } else {
+        preview.innerHTML = '<span style="color:#58595B;font-size:14px">Select a model to preview</span>';
+      }
+    }
+
+    function generateVin() {
+      var chars = 'ABCDEFGHJKLMNPRSTUVWXYZ0123456789';
+      var vin = '';
+      for (var i = 0; i < 17; i++) vin += chars[Math.floor(Math.random() * chars.length)];
+      return vin;
+    }
+
+    async function submitVehicle(e) {
+      e.preventDefault();
+      var btn = document.getElementById('btn-submit');
+      var errEl = document.getElementById('form-error');
+      btn.disabled = true;
+      btn.textContent = 'Adding...';
+      errEl.style.display = 'none';
+
+      var body = {
+        model: document.getElementById('f-model').value,
+        year: parseInt(document.getElementById('f-year').value),
+        mileage: parseInt(document.getElementById('f-mileage').value),
+        vin: document.getElementById('f-vin').value || generateVin(),
+        status: document.getElementById('f-status').value
+      };
+
+      try {
+        var res = await fetch('/api/vehicles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to add vehicle');
+        closeModal();
+        showToast('Added ' + body.model + ' to fleet');
+        loadVehicles();
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Add Vehicle';
+      }
+    }
+
+    async function deleteVehicle(id, model) {
+      if (!confirm('Remove ' + model + ' from fleet?')) return;
+      try {
+        await fetch('/api/vehicles/' + id, { method: 'DELETE' });
+        showToast('Removed ' + model + ' from fleet');
+        loadVehicles();
+      } catch (e) {}
+    }
+
     async function loadStatus() {
       try {
-        const res = await fetch('/api/status');
-        const data = await res.json();
-        const dot = document.getElementById('status-dot');
-        const label = document.getElementById('connection-label');
-        const details = document.getElementById('connection-details');
-        const errorMsg = document.getElementById('error-msg');
+        var res = await fetch('/api/status');
+        var data = await res.json();
+        var dot = document.getElementById('status-dot');
+        var label = document.getElementById('connection-label');
+        var details = document.getElementById('connection-details');
+        var errorMsg = document.getElementById('error-msg');
 
         if (data.connected) {
           dot.className = 'status-dot connected';
@@ -388,7 +833,8 @@ app.get('/', (_req, res) => {
           details.innerHTML =
             '<div class="detail"><strong>Host:</strong> ' + data.host + '</div>' +
             '<div class="detail"><strong>Latency:</strong> ' + data.responseTimeMs + 'ms</div>' +
-            '<div class="detail"><strong>PostgreSQL:</strong> ' + data.version + '</div>';
+            '<div class="detail"><strong>PostgreSQL:</strong> ' + data.version + '</div>' +
+            '<div class="detail"><strong>Fleet Size:</strong> ' + data.vehicleCount + ' vehicles</div>';
           errorMsg.style.display = 'none';
         } else {
           dot.className = 'status-dot disconnected';
@@ -405,26 +851,31 @@ app.get('/', (_req, res) => {
 
     async function loadVehicles() {
       try {
-        const res = await fetch('/api/vehicles');
-        const vehicles = await res.json();
-        const tbody = document.getElementById('vehicles-body');
+        var res = await fetch('/api/vehicles');
+        var vehicles = await res.json();
+        var tbody = document.getElementById('vehicles-body');
+        var countEl = document.getElementById('fleet-count');
         if (vehicles.error) {
-          tbody.innerHTML = '<tr><td colspan="6" style="color:#dc2626">' + vehicles.error + '</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="8" style="color:#dc2626">' + vehicles.error + '</td></tr>';
           return;
         }
+        countEl.textContent = '(' + vehicles.length + ' vehicles)';
         tbody.innerHTML = vehicles.map(function(v) {
+          var statusClass = v.status === 'active' ? 'status-active' : 'status-maintenance';
           return '<tr>' +
-            '<td style="font-family:monospace;font-size:13px">' + v.vin + '</td>' +
-            '<td><strong>' + v.model + '</strong></td>' +
+            '<td class="car-icon">' + getCarSvg(v.model) + '</td>' +
+            '<td><div class="model-cell"><strong>' + v.model + '</strong></div></td>' +
+            '<td style="font-family:monospace;font-size:12px;color:#58595B">' + v.vin + '</td>' +
             '<td>' + v.year + '</td>' +
-            '<td><span class="status-active">' + v.status + '</span></td>' +
+            '<td><span class="' + statusClass + '">' + v.status + '</span></td>' +
             '<td>' + Number(v.mileage).toLocaleString() + '</td>' +
             '<td>' + new Date(v.last_service).toLocaleDateString() + '</td>' +
+            '<td><button class="delete-btn" onclick="deleteVehicle(' + v.id + ',\\'' + v.model + '\\')" title="Remove">\u00d7</button></td>' +
           '</tr>';
         }).join('');
       } catch (e) {
         document.getElementById('vehicles-body').innerHTML =
-          '<tr><td colspan="6" style="color:#dc2626">Failed to load vehicles</td></tr>';
+          '<tr><td colspan="8" style="color:#dc2626">Failed to load vehicles</td></tr>';
       }
     }
 
@@ -437,9 +888,12 @@ app.get('/', (_req, res) => {
   res.send(html);
 });
 
-app.listen(PORT, () => {
-  console.log('Toyota Fleet Database Portal running on port ' + PORT);
-  console.log('App Version: ' + APP_VERSION);
-  console.log('Connection Method: ' + CONNECTION_METHOD);
-  console.log('Database Host: ' + DB_HOST);
+// --- Startup ---
+seedV2Vehicles().then(() => {
+  app.listen(PORT, () => {
+    console.log('Toyota Fleet Database Portal running on port ' + PORT);
+    console.log('App Version: ' + APP_VERSION);
+    console.log('Connection Method: ' + CONNECTION_METHOD);
+    console.log('Database Host: ' + DB_HOST);
+  });
 });
