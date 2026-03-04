@@ -1,0 +1,11 @@
+Toyota Fleet Database Portal has been deployed!
+
+App Version: {{ .Values.app.version }}
+Connection Method: {{ .Values.app.connectionMethod }}
+Database Host: {{ .Values.database.host }}
+
+Access the application at:
+  http://<NODE_IP>:{{ .Values.service.nodePort }}
+
+To check the status:
+  kubectl get pods -l "app.kubernetes.io/name={{ include "toyota-demo.name" . }}"

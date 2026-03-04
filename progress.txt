@@ -34,3 +34,11 @@
 - Pushed code and tag v1.0.0
 - GitHub Actions completed successfully in 57s
 - Docker Hub has nctiggy/toyota-demo-app:1.0.0 with both amd64 and arm64 platforms
+
+## US-005: Helm Chart ✓
+- Created charts/toyota-demo/ with Chart.yaml, values.yaml, values-v1.yaml, values-v2.yaml
+- Templates: deployment, service, configmap, secret, _helpers.tpl, NOTES.txt
+- Deployment uses envFrom (configmap + secret), liveness/readiness probes on /healthz
+- Service: NodePort on 30080
+- helm lint passes for default, v1, and v2 value files
+- helm template renders correct v1 config (direct IP) and v2 config (K8s service DNS)

@@ -1,0 +1,9 @@
+image:
+  tag: "2.0.0"
+
+database:
+  host: "postgresql.virtual-machines.svc.cluster.local"
+
+app:
+  version: "2.0.0"
+  connectionMethod: "overlay"

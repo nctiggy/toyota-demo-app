@@ -1,0 +1,9 @@
+image:
+  tag: "1.0.0"
+
+database:
+  host: "10.30.0.27"
+
+app:
+  version: "1.0.0"
+  connectionMethod: "direct"

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: toyota-demo
+description: Toyota Fleet Database Portal — VMO Demo Application
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
