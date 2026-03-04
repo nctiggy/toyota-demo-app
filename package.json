@@ -1,0 +1,16 @@
+{
+  "name": "toyota-demo-app",
+  "version": "1.0.0",
+  "description": "Toyota Fleet Database Portal — VMO Demo Application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "pg": "^8.13.0"
+  }
+}

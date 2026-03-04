@@ -8,3 +8,14 @@
 - Created vehicles table and seeded 10 Toyota vehicles
 - Restarted PostgreSQL
 - Verified: remote TCP connectivity works, SELECT count(*) FROM vehicles returns 10
+
+## US-002: Complete Application ✓
+- Created package.json with Express 4.21 and pg 8.13
+- Built server.js: single-file Express app with Toyota-branded embedded HTML/CSS
+- Endpoints: GET / (HTML), GET /healthz (200 OK), GET /api/status (DB status JSON), GET /api/vehicles (vehicle data)
+- Toyota branding: #EB0A1E red, #58595B gray, Montserrat font, TOYOTA logo, version badge
+- v1/v2 differentiation via APP_VERSION and CONNECTION_METHOD env vars
+- Connection flow visualization, vehicle table, status card with latency
+- v2 mode adds Migration Complete card and Migration Stats
+- Created .dockerignore
+- Validated: all 4 endpoints return correct data, 10 vehicles, Toyota styling confirmed
