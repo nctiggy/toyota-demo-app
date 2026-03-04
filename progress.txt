@@ -26,3 +26,11 @@
 - Local build: docker build -t toyota-demo-app:test . succeeds
 - Container run: docker run -e DB_HOST=10.30.0.27 -p 3000:3000 toyota-demo-app:test serves app
 - Verified: /healthz OK, /api/status connected=true, /api/vehicles returns 10 vehicles
+
+## US-004: GitHub Repo + CI ✓
+- Created repo: github.com/nctiggy/toyota-demo-app (public)
+- Set DOCKERHUB_USERNAME and DOCKERHUB_TOKEN secrets from 1Password docker(PAT)
+- Created .github/workflows/docker.yml for multi-arch builds on tag push
+- Pushed code and tag v1.0.0
+- GitHub Actions completed successfully in 57s
+- Docker Hub has nctiggy/toyota-demo-app:1.0.0 with both amd64 and arm64 platforms
